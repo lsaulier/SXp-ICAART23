@@ -1,10 +1,7 @@
 
-import gym
-from gym import Env
-from gym import utils
-from gym.spaces import Discrete
+from gymnasium import Env
+from gymnasium.spaces import Discrete
 from colorize import colorize, yellow
-from math import sqrt
 import numpy as np
 import random
 from copy import deepcopy
@@ -186,17 +183,19 @@ class DroneAreaCoverage(Env):
 
     #  Perform action for all agents, update the map and their observations and check collisions
     #  Input: agents (Agent list) and their actions (int list), use of step() for P-scenario (boolean), wind agent
-    #  (WindAgent) and its NN (DQN), device (String), type of transition function (String) and list of fixed transitions
+    #  (WindAgent) and its NN (DQN), device (String), type of transition function (String), list of fixed transitions
     #  for debugging code (int list list)
     #  Output: the old, temporary (before the wind moves the agent) and new states (int list list), list
-    #  used to know if it's the end of an episode (boolean list) and a copy of the current map (int list list)
-    def step(self, agents, actions, most_probable_transitions=False, wind_agent=None, wind_net=None, device="cpu", move="all", fixed_transition=[]):
+    #  used to know if it's the end of an episode (boolean list), a copy of the current map (int list list) and
+    #  the probability of the transition (float)
+    def step(self, agents, actions, most_probable_transitions=0, wind_agent=None, wind_net=None, device="cpu", move="all", fixed_transition=[]):
         #  Initialization
         states = []
         temp_states = []
         new_states = []
         new_positions = []
         map_copy = None
+        proba = [1.0, 1.0, 1.0, 1.0]
         #  Get agents states
         for agent in agents:
             states.append(agent.get_obs())
@@ -230,8 +229,10 @@ class DroneAreaCoverage(Env):
         if not self.windless:
             for i in range(len(new_positions)):
                 #  Transition / Wind's action choice
-                if most_probable_transitions:  # P-scenario
+                if most_probable_transitions == 1:  # P-scenario
                     action = np.argmax(self.P)
+                elif most_probable_transitions == -1:  # LP-scenario
+                    action = np.argmin(self.P)
                 elif fixed_transition:  # Study special configurations and compare Agents
                     action = fixed_transition[i]
                 elif wind_net is not None:  # HE/FE-scenario
@@ -244,6 +245,8 @@ class DroneAreaCoverage(Env):
 
                 else:  # Agent training process
                     action = np.random.choice(4, p=self.P)
+
+                proba[i] = self.P[action] if actions[i] != 4 else 1.0  # linked proba
 
                 #  Change position if actions are not opposite and not 'stop' or if action is 'stop'
                 if move == "all":
@@ -263,11 +266,11 @@ class DroneAreaCoverage(Env):
 
         #  Update for rendering the environment
         self.last_actions = actions
-
-        return states, temp_states, new_states, dones, map_copy
+        #print('actions: {} probas tr: {}'.format(actions, proba))
+        return states, temp_states, new_states, dones, map_copy, proba
 
     #  Perform action for a type of Wind agents, update the map and their observation and check collisions
-    #  Input: wind agents (WindAgent list), their actions (int list), type of transition (String),
+    #  Input: wind agents (WindAgent list), their actions (int list), type of transition function (String),
     #  agents (only used in correlTrain()) (Agent list), their NN (DQN) and the device (String)
     #  Output: the old, temporary (before the wind moves the agent) and new states (int list list), list
     #  used to know if it's the end of an episode (boolean list) and a copy of the current map (int list list)
@@ -491,10 +494,10 @@ class DroneAreaCoverage(Env):
                 #  Count highlighted cells in 3x3 matrix
                 cells_highlighted = sum(sub_list.count(1) for sub_list in sub_view)
                 if reward_type == "A":
-                    #  Penality if at least one different drone is in view range
+                    #  Penalty if at least one different drone is in view range
                     if sum([sub_list.count(2) for sub_list in view]) > 1:
                         reward = -1
-                    #  Penality Stop action without perfect cover
+                    #  Penalty Stop action without perfect cover
                     if self.windless:
                         if actions[i] == 4 and cells_highlighted != max_cells_highlighted:
                             reward = -1
@@ -505,7 +508,7 @@ class DroneAreaCoverage(Env):
                             reward = 1
 
                 else:
-                    #  Penality for each drone(s) in view range
+                    #  Penalty for each drone(s) in view range
                     reward -= (sum([sub_list.count(2) for sub_list in view]) - 1) / max_agents_inrange * (len(agents)-1)
                     #  Cover reward
                     if max_cells_highlighted == cells_highlighted:
@@ -518,7 +521,6 @@ class DroneAreaCoverage(Env):
 
             i += 1
         return rewards
-
 
     #  At a timestep, compute the reward for each wind agent of a specific type
     #  Input: agents (Agent list), list used to know if it's the end of an episode (boolean list) and
@@ -553,7 +555,7 @@ class DroneAreaCoverage(Env):
                 #  Count highlighted cells in 3x3 matrix
                 cells_highlighted = sum(sub_list.count(1) for sub_list in sub_view)
                 if reward_type == "A":
-                    #  Penality if at least one different drone is in view range
+                    #  Penalty if at least one different drone is in view range
                     if sum([sub_list.count(2) for sub_list in view]) > 1:
                         if agent.behaviour == "hostile":
                             reward = 1
@@ -568,7 +570,7 @@ class DroneAreaCoverage(Env):
                             else:
                                 reward = 1
                 else:
-                    #  Penality for each drone(s) in view range
+                    #  Penalty for each drone(s) in view range
                     if agent.behaviour == "hostile":
                         reward += (sum([sub_list.count(2) for sub_list in view]) - 1) / max_agents_inrange * (len(agents)-1)
                     else:

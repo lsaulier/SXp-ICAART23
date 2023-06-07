@@ -1,4 +1,4 @@
-import sys
+
 import csv
 import numpy as np
 import argparse
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     #  Store infos
     datas = []
     final_scores = []
-    #  Get from the CSV file datas and compute means
+    #  Get data from the CSV file and compute means
     if CONFIGS_NUMBER == 1:
 
         if PATH != " ":
@@ -36,12 +36,12 @@ if __name__ == "__main__":
         with open(CSV_FILENAME, 'r') as f:
 
             for line in f:
-                #  Extract scores
+                #  Extract quality scores
                 if not line.isspace():
                     data = [float(d) for d in line.rstrip().split('\t')[0].split(',')]
                     print(data)
                     datas.append(data)
-            #  Compute average of scores
+            #  Compute average of quality scores
             final_score = np.mean(datas, axis=0)
             print("Final Score: {}".format(final_score))
             final_scores.append(final_score)
@@ -52,7 +52,7 @@ if __name__ == "__main__":
             writer = csv.writer(f)
             for fs in final_scores:
                 writer.writerow(fs)
-    #  Get from n CSV files average scores and compute an overall average
+    #  Get from n CSV files average quality scores and compute an overall average
     else:
         Scores = [[], [], []]  # PSXp_scores, HEXp_scores, FEXp_scores
 
@@ -62,7 +62,7 @@ if __name__ == "__main__":
             path = "Metrics" + os.sep + "New tests" + os.sep
 
         for i in range(CONFIGS_NUMBER):
-            #  Extract scores from each CSV files
+            #  Extract quality scores from each CSV files
             filename = path + str(i+1)+ CSV_COMMON
             with open(filename, 'r') as f:
                 for line in f:
@@ -70,7 +70,7 @@ if __name__ == "__main__":
                         data = [float(d) for d in line.rstrip().split('\t')[0].split(',')]
                         for k in range(3):
                             Scores[k].append(data[k])
-        #  Display collected scores
+        #  Display collected quality scores
         for score in Scores:
             print("Score: {}".format(score))
         #  Calculate average

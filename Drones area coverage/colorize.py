@@ -14,7 +14,7 @@ color2num = dict(
     white=47,
 )
 
-#  Highlight the backgournd of text. It's used to display a cover of a drone
+#  Highlight the background of text. It's used to display a cover of a drone
 #  Input: text which need a colored background (String), a color (String) and use or not of different colors (Boolean)
 #  Output: Text with colored background (String)
 def colorize(text, color_, small=True):

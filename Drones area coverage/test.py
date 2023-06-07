@@ -1,3 +1,5 @@
+import csv
+
 from DQN import DQN
 from agent import Agent, WindAgent
 from env import DroneAreaCoverage
@@ -6,8 +8,6 @@ import torch
 import os
 import argparse
 import numpy as np
-import sys
-from copy import deepcopy
 
 if __name__ == "__main__":
 
@@ -40,9 +40,11 @@ if __name__ == "__main__":
     parser.add_argument('-no_r', '--no_render', action="store_false", dest="render", help="No environment rendering at each step", required=False)
     parser.set_defaults(render=False)
     parser.add_argument('-csv', '--csv_filename', default="scores.csv", help="csv file to store scores in case of starting from a specific state", type=str, required=False)
-    parser.add_argument('-scenarios', '--nb_scenarios', default=1000, help="Number of randomly-generated scenarios given a policy, for a SXp score", type=int, required=False)
+    parser.add_argument('-scenarios', '--nb_scenarios', default=10000, help="Number of randomly-generated scenarios given a policy, for a SXp score", type=int, required=False)
     parser.add_argument('-spec_conf', '--specific_starting_configuration', default="[[1, 7], [4, 2], [3, 6], [6, 6]]", help="Specific state", type=str, required=False)
     parser.add_argument('-k', '--length_k', default=6, help="Length of SXps", type=int, required=False)
+    parser.add_argument('-summary', '--summary', default=0, help="Ratio for summarized SXps", type=int, required=False)
+    parser.add_argument('-lbda', '--lbda', default=1.0, help="Impact of gap score during the computation of a summarized SXp", type=float, required=False)
     args = parser.parse_args()
 
     # Get arguments
@@ -64,6 +66,9 @@ if __name__ == "__main__":
     NUMBER_SCENARIOS = args.nb_scenarios
     CSV_FILENAME = args.csv_filename
     RENDER = args.render
+
+    SUMMARY = args.summary
+    LAMBDA = args.lbda
 
     #  Fill configuration list (convert string into int list)
     temp_configuration = args.specific_starting_configuration
@@ -101,7 +106,7 @@ if __name__ == "__main__":
     #  Compute SXp's from a specific configuration
     if SPECIAL_CASE:
         env.initObs(agents, RANDOM_STARTING_POSITION, debug_position=True)
-        env.set_lastactions([0, 0, 0, 0]) # useless information
+        env.set_lastactions([0, 0, 0, 0])  # useless information
     else:
         env.initObs(agents, RANDOM_STARTING_POSITION)
 
@@ -125,6 +130,8 @@ if __name__ == "__main__":
     #  Get max/min reward for normalizing P-score
     max_reward = env.max_reward(agents, reward_type="B")
     extremum_reward = [-max_reward, max_reward]
+    #  Path to store new SXP's scores
+    CSV_FILENAME = "Metrics" + os.sep + "New tests" + os.sep + CSV_FILENAME
 
     if SPECIAL_CASE:
         dones = [False, False, False, False]
@@ -136,29 +143,52 @@ if __name__ == "__main__":
         print("Cumulative reward : {}".format(sum(rewards)))
         print('-------')
 
-        # SXp
-        if WINDAGENT:
-            CSV_FILENAME = "Metrics" + os.sep + "New tests" + os.sep + CSV_FILENAME
-            SXpMetric(env, agents, wind_agents, K, net, [h_net, f_net], DEVICE, move=MOVE, number_scenarios=NUMBER_SCENARIOS,
-                           extremum_reward=extremum_reward, csv_filename=CSV_FILENAME, render=RENDER, concise=MM_REWARD)
+        if not SUMMARY:
+            #  SXp
+            if WINDAGENT:
+                SXpMetric(env, agents, wind_agents, K, net, [h_net, f_net], DEVICE, move=MOVE, number_scenarios=NUMBER_SCENARIOS,
+                               extremum_reward=extremum_reward, csv_filename=CSV_FILENAME, render=RENDER, concise=MM_REWARD)
+            else:
+                SXp(env, agents, None, K, net, None, DEVICE, move=MOVE)
         else:
-            SXp(env, agents, None, K, net, None, DEVICE, move=MOVE)
+            if WINDAGENT:
+                SXp(env, agents, wind_agents, K, net, [h_net, f_net], DEVICE, move=MOVE,
+                    extremum_reward=extremum_reward, summary=SUMMARY, lbda=LAMBDA)
+    # Compute SXp from n randomly chosen observation and store representativeness scores
+    # Compare representativeness scores between FE/HE-scenarios
+    elif CSV_FILENAME.split(os.sep)[-1][:2] == "rp":
+        #  Write first line ----------------
+        with open(CSV_FILENAME, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Configuration (k='+str(K)+')', 'P score', 'FE score', 'HE score'])
+        #  Compute SXps -------------------
+        for _ in range(NUMBER_SCENARIOS):
+            # Init configuration
+            env.init_map()
+            env.initPos(agents, True)
+            print([agent.position for agent in agents])
+            # SXp metric
+            SXpMetric(env, agents, wind_agents, K, net, [h_net, f_net], DEVICE, move=MOVE,
+                      extremum_reward=extremum_reward, csv_filename=CSV_FILENAME, render=RENDER, concise=MM_REWARD)
+
+    # Classic testing loop with SXp
     else:
         cpt = 0
         while cpt <= LIMIT:
-
-            # SXp
+            print('Coords: {}'.format([agent.position for agent in agents]))
+            #  SXp
             if WINDAGENT:
-                SXp(env, agents, wind_agents, K, net, [h_net, f_net], DEVICE, number_scenarios=NUMBER_SCENARIOS, move=MOVE, extremum_reward=extremum_reward, render=True)
+                SXp(env, agents, wind_agents, K, net, [h_net, f_net], DEVICE, number_scenarios=NUMBER_SCENARIOS,
+                    move=MOVE, extremum_reward=extremum_reward, render=True, summary=SUMMARY, lbda=LAMBDA)
             else:
-                SXp(env, agents, None, K, net, None, DEVICE, move=MOVE)
+                SXp(env, agents, None, K, net, None, DEVICE, move=MOVE, summary=SUMMARY, lbda=LAMBDA)
             #  Choose action
             actions = []
             for agent in agents:
                 action = agent.chooseAction(net, epsilon=0, device=DEVICE)
                 actions.append(action)
             #  Step
-            _, _, _, dones, _ = env.step(agents, actions, move=MOVE)
+            _, _, _, dones, _, _ = env.step(agents, actions, move=MOVE)
             #  Render
             env.render(agents)
             #  Extract rewards
@@ -174,3 +204,4 @@ if __name__ == "__main__":
             print('-------')
 
             cpt += 1
+

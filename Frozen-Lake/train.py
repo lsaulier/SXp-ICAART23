@@ -1,4 +1,4 @@
-import numpy as np
+
 import argparse
 import os
 from env import MyFrozenLake
@@ -6,7 +6,7 @@ from agent import Agent, WindAgent
 
 if __name__ == "__main__":
 
-    #  Parser
+    # Parser
     parser = argparse.ArgumentParser()
     parser.add_argument('-map', '--map_name', default="4x4", help="Map's dimension (nxn)", type=str, required=False)
     parser.add_argument('-policy', '--policy_name', default="4x4map_test", help="Common part of policies name", type=str, required=False)
@@ -24,22 +24,21 @@ if __name__ == "__main__":
     favorable_agent_Q_dirpath = "Q-tables" + os.sep + "Favorable"
     hostile_agent_Q_dirpath = "Q-tables" + os.sep + "Hostile"
 
-
-    #  Envs initialisation
+    # Envs initialisation
     env_windF = MyFrozenLake(behaviour="Favorable", map_name=MAP_NAME)
     env_windH = MyFrozenLake(behaviour="Hostile", map_name=MAP_NAME)
     env = MyFrozenLake(map_name=MAP_NAME)
 
-    #  Agents initialization
+    # Agents initialization
     windAgent_F = WindAgent(POLICY_NAME, env_windF)
     windAgent_H = WindAgent(POLICY_NAME, env_windH)
     agent = Agent(POLICY_NAME, env, model_env_wind_list=[[windAgent_F, env_windF], [windAgent_H, env_windH]])
 
-    #  Train
+    # Train
     agent.correlatedTrain(NB_EPISODES)
     print("End of training")
 
-    #  Save Q tables
+    # Save Q tables
     agent.save(agent_Q_dirpath)
     windAgent_H.save(hostile_agent_Q_dirpath)
     windAgent_F.save(favorable_agent_Q_dirpath)

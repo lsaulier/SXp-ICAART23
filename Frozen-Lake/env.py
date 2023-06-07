@@ -1,10 +1,9 @@
 #  WARNING : this version of the environment only works when there is only one starting state S in the map
 #  Need updates to allow several starting states
 
-import gym
-from gym import Env
-from gym import utils
-from gym.spaces import Discrete, Box, Dict, Tuple, MultiBinary, MultiDiscrete
+from gymnasium import Env
+from gymnasium import utils
+from gymnasium.spaces import Discrete
 import numpy as np
 
 #  Actions
@@ -45,18 +44,45 @@ MAPS = {
         "FHHFFFHF",
         "FHFFHFHF",
         "FFFHFFFG",
+    ],
+
+    "10x10": [
+        "SFHFFFFHFF",
+        "FFHFHHFFHF",
+        "FFHFFFFFFF",
+        "FFFFFFHFFH",
+        "FFHFHFFFHF",
+        "FFFFHFFFFF",
+        "FFFFHHFHFF",
+        "HFFFFFFHFF",
+        "FHFFFFFHFF",
+        "FFFHFHFFFG"
+    ],
+    "10x10v2": [
+        "SFFFFFFHFF",
+        "FHFFFHFFHF",
+        "FFFHFFHFFF",
+        "FFFHFFFFFH",
+        "FFFFHFFFHF",
+        "HHFFFHFFHF",
+        "FFFFFFFFFF",
+        "FHFHFFHHFF",
+        "HFFHFFHHFF",
+        "FFFFFFFFFG",
     ]
 
 }
+
 
 #  Class used for coloring the current state in the render function
 class bcolors:
     OKCYAN = '\033[96m'
     ENDC = '\033[0m'
 
+
 class MyFrozenLake(Env):
 
-    def __init__(self, desc=None, map_name="4x4", is_slippery=True, behaviour=None):
+    def __init__(self, map_name="4x4", is_slippery=True, behaviour=None):
         #  Map
         desc = MAPS[map_name]
         self.desc = np.asarray(desc, dtype="c")
@@ -111,7 +137,7 @@ class MyFrozenLake(Env):
 
         #  Update the probability matrix
         #  Input: coordinates (int), action (int), and the possible future action (int)
-        #  Last argument only used for wind probability matrix
+        #  The last argument is only used for wind probability matrix
         #  Output: new state (int), reward (float) and end of episode (boolean)
         def update_probability_matrix(row, col, action, future_action=None):
             newrow, newcol = self.inc(row, col, action)
@@ -163,8 +189,6 @@ class MyFrozenLake(Env):
                                     )
                             else:
                                 li.append((1.0, *update_probability_matrix(row, col, a)))
-
-
         return
 
     #  From coordinates to state
@@ -185,19 +209,18 @@ class MyFrozenLake(Env):
             col = min(col + 1, self.nCol - 1)
         elif a == UP:
             row = max(row - 1, 0)
-        return (row, col)
+        return row, col
 
-    #  The agent performs a step in the environment and arrive in a particular state
+    #  The agent performs a step in the environment and arrives in a particular state
     #  according to the probability matrix, the current state, the action of both the agent and the wind
     #  Input: action (int), index of the action (int) and already chosen new state (int).
     #  Two last arguments are only used for the wind
     #  Output: new state (int), the reward (int), done flag (bool) and probability
-    #  to come into the new state (float)
+    #  to finish in the new state (float)
     def step(self, action, index_action=None, new_state=None):
 
         #  Case of the wind's step
         if index_action is not None:
-
             transitions = self.P[self.state][index_action]
             #  Get the transition which lead to the already chosen new state
             for transition in transitions:
@@ -206,7 +229,6 @@ class MyFrozenLake(Env):
 
         #  Case of the agent's step
         else:
-
             transitions = self.P[self.state][action]
             #  Random choice among possible transitions
             i = np.random.choice(len(transitions))
@@ -267,12 +289,6 @@ class MyFrozenLake(Env):
     def setObs(self, obs):
         self.state = obs
         return
-
-    #  Get the current state
-    #  Input: None
-    #  Output: state (int)
-    def getObs(self):
-        return self.state
 
     #  Get reward given an action performed from a state and a reached state
     #  Input: state, action and reached state (int)

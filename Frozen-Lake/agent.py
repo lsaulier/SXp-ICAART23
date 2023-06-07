@@ -83,7 +83,7 @@ class Agent:
         print("End of training")
         return
 
-    #  Train the model
+    #  Sequentially train models
     #  Input: number of training episode (int)
     #  Output: None
     def correlatedTrain(self, nE):
@@ -95,7 +95,8 @@ class Agent:
         print("Starting Agent's training")
         # Training loop
         for episode in range(nE):
-
+            if episode % 50000 == 0:
+                print('Step {}/{} -- Epsilon {}'.format(episode, nE, expRate_schedule[episode]))
             #  Flag to stop the episode
             done = False
             while not done:
@@ -120,13 +121,16 @@ class Agent:
 
         self.exp_rate = 0.0  # Agent's training is now done, there is no need to explore, only use the Q table
 
+        for s in range(self.env.nCol * self.env.nRow):
+            print('State {} -->  Q-values {} --- Action {}'.format(s, self.Q[s], self.predict(s)[0]))
         # ------------------------------- HOSTILE AGENT TRAINING -----------------------------------
         print("Starting Hostile Agent's training")
         start_time = time.time()
         hostile_model, hostile_env = self.wind_list[1][0], self.wind_list[1][1]
         # Training loop
         for episode in range(nE):
-
+            if episode % 10000 == 0:
+                print('Step {}/{}'.format(episode, nE))
             #  Flag to stop the episode
             done = False
             i = 0
@@ -166,7 +170,8 @@ class Agent:
         favorable_model, favorable_env = self.wind_list[0][0], self.wind_list[0][1]
         # Training loop
         for episode in range(nE):
-
+            if episode % 10000 == 0:
+                print('Step {}/{}'.format(episode, nE))
             #  Flag to stop the episode
             done = False
             i = 0
@@ -237,7 +242,6 @@ class Agent:
         # Updating rule
         self.Q[state, action] = self.Q[state, action] + self.lr * \
                                 (reward + self.decay_gamma * np.max(self.Q[new_state, :]) - self.Q[state, action])
-
         return
 
     #  Save the current Q table in a JSON file
@@ -247,7 +251,6 @@ class Agent:
         q_function_list = self.Q.tolist()
         with open(path + os.sep + 'Q_' + self.name, 'w') as fp:
             json.dump(q_function_list, fp)
-
         return
 
     #  Load a Q table from a JSON file
@@ -258,7 +261,6 @@ class Agent:
             q_list = json.load(fp)
             self.Q = np.array(q_list)
             print("Q function loaded")
-
         return
 
     #  Build a list of values of exploratory rate which decrease over episodes
@@ -282,12 +284,11 @@ class Agent:
     def getValue(self, observation):
         return np.max(self.Q[observation])
 
-    #  Set for a specific state a value in Q-table. It's only used for SXp (deal with sparse reward)
-    #  Input: state (int) and a value (float)
-    #  Output: Q-value (float)
-    def setValue(self, observation, value):
-        self.Q[observation][:] = value
-        return
+    #  Compute the state importance of a specific observation
+    #  Input: state (int)
+    #  Output: score (float)
+    def stateImportance(self, observation):
+        return max(self.Q[observation][:]) - min(self.Q[observation][:])
 
 class WindAgent:
 
@@ -331,7 +332,6 @@ class WindAgent:
         #  Updating rule
         self.Q[state, action] = self.Q[state, action] + self.lr * \
                                 (reward + self.decay_gamma * np.max(self.Q[new_state, :]) - self.Q[state, action])
-
         return
 
     #  Save the current Q table in a JSON file
@@ -346,7 +346,6 @@ class WindAgent:
         q_function_list = self.Q.tolist()
         with open(path + os.sep + 'Q_Wind' + type_env + "_" + self.name, 'w') as fp:
             json.dump(q_function_list, fp)
-
         return
 
     #  Load a Q table from a JSON file
@@ -362,7 +361,6 @@ class WindAgent:
             q_list = json.load(fp)
             self.Q = np.array(q_list)
             print("Wind' Q function loaded")
-
         return
 
     #  Predict an action from a given state

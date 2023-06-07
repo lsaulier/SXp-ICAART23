@@ -1,4 +1,4 @@
-import sys
+
 import csv
 import numpy as np
 import argparse
@@ -70,6 +70,7 @@ if __name__ == "__main__":
         if MAP == "4x4":
             if STATES_LIST != " ":
                 states = [int(s) for s in STATES_LIST.strip('[]').split(',')]
+                print(states)
             else:
                 states = [0, 4, 8, 9, 10, 13, 14]
 
@@ -77,7 +78,7 @@ if __name__ == "__main__":
                 path = PATH + os.sep
             else:
                 path = "Metrics" + os.sep + "7 reachable states - 4x4" + os.sep + "New tests" + os.sep
-            print("Map 4x4 \n Average scores computed from 7 reachable states: {}".format(states))
+            print("Map 4x4 \n Average scores computed from {} reachable states: {}".format(len(states), states))
         elif MAP == "8x8":
             if STATES_LIST != " ":
                 states = [int(s) for s in STATES_LIST.strip('[]').split(',')]
@@ -87,7 +88,7 @@ if __name__ == "__main__":
                 path = PATH + os.sep
             else:
                 path = "Metrics" + os.sep + "20 random states - 8x8" + os.sep + "New tests" + os.sep
-            print("Map 8x8 \n Average scores computed from 20 randomly-chosen states: {}".format(states))
+            print("Map 8x8 \n Average scores computed from {} randomly-chosen states: {}".format(len(states), states))
         else:
             states = [int(s) for s in STATES_LIST.strip('[]').split(',')]
             if PATH != " ":
@@ -109,4 +110,4 @@ if __name__ == "__main__":
         for score in Scores:
             print("Score: {}".format(score))
         #  Calculate average
-        print("Final means : \n PSXP : {} \n HEXp : {} \n FEXp : {}".format(sum(Scores[0])/STATES_NUMBER, sum(Scores[1])/STATES_NUMBER, sum(Scores[2])/STATES_NUMBER))
+        print("Final means : \n P-s. : {} \n HE-s. : {} \n FE-s. : {}".format(sum(Scores[0])/STATES_NUMBER, sum(Scores[1])/STATES_NUMBER, sum(Scores[2])/STATES_NUMBER))

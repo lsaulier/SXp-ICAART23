@@ -1,5 +1,6 @@
-The implemented code for the *Experimental Results* of the paper *"Reinforcement Learning explained via Reinforcement 
-Learning: towards explainable policies through predictive explanation"* is divided into two folders, one for each 
+The implemented code for the *Experimental Results* of the papers *"Reinforcement Learning explained via Reinforcement 
+Learning: towards explainable policies through predictive explanation"* and *"What is likely to happen? Predictive explanations of
+agent’s interaction with the environment"*, an extended version of the first one. The code is divided into two folders, one for each 
 problem. Before testing our implementations, it's *necessary* to install packages of requirements.txt using the 
 following pip command: 
 
@@ -9,22 +10,26 @@ pip install -r requirements.txt
 
 Afterward, before running any files, the user must be in the directory of the problem:
 ```bash
-cd .\Frozen-Lake\
-cd '.\Drones area coverage\'
+cd ./Frozen-Lake/
+cd './Drones area coverage/'
 ```
 
 Find below the main commands to use:
 ```bash
 #####  Frozen Lake  #####
 # Train of Agent and WindAgents for 4x4 map (not required command)
-python train.py
+python3 train.py
 # Test a policy trained in a 4x4 map. The user can ask at each timestep, SXp's of length 5 and their associated scores.
-python test.py
+python3 test.py
+# Test a policy trained in a 8x8 map. The user can ask at each timestep, SXp's of length 15 and their associated scores. The displayed SXp are summarized with a compression ratio of 3.
+python3 test.py -map '8x8' -policy '8x8' -k 15 -summary 3
 #####  Drone Coverage  #####
 # Train of Agent and WindAgents with a steplimit of 40000 (not required command)
-python train.py -model "Test_Models" -log "Test_Logs" -limit 40000
+python3 train.py -model "Test_Models" -log "Test_Logs" -limit 40000
 # Test a trained policy. The user can ask at each timestep, SXp's of length 6 and their associated scores.
-python test.py
+python3 test.py
+# Test a trained policy. The user can ask at each timestep, SXp's of length 50 and their associated scores. The displayed SXp are summarized displayed with a compression ratio of 5.
+python3 test.py -k 50 -summary 5
 ```
 
 
@@ -37,11 +42,12 @@ The Frozen Lake folder is organised as follows:
 * **train.py**: parameterized python file which calls training function for Agent and WindAgent instances, and store learnt Q-tables into JSON files
 
 
-* **test.py**: parameterized python file which loads learnt Q-tables and tests them in both ways :
+* **test.py**: parameterized python file which loads learnt Q-tables and tests them in three ways :
     * A classic sequence loop (named *user mode*) which starts in the initial state of the chosen map. The learnt agent's policy is used. 
       At each time-step, the user can ask for SXp's. Explanation scores can be computed when all SXp's are displayed.
-    * A specific computation of the three SXp's from a particular state. In this case, explanation scores are 
+    * A specific computation of SXp from a particular state. In this case, explanation scores are 
       necessarily computed.
+    * A computation of *n* SXp from different starting state to measure representativeness scores. To do so, the user must provide as a parameter a CSV filename starting with *'rp'*.
 
 
 * **agent.py**: regroups two classes: *Agent* for classic RL agents and *WindAgent* which is used to represent hostile/favourable environment-agents. These classes include Q-tables.
@@ -50,12 +56,13 @@ The Frozen Lake folder is organised as follows:
 * **env.py**: contains a class *MyFrozenLake* which represent the Frozen Lake environment (inspired by https://github.com/openai/gym/blob/master/gym/envs/toy_text/frozen_lake.py)
 
 
-* **SXp.py**: performs SXp's and compute their scores with the quality evaluation function f representing a weighted addition of the last-step reward of a scenario and it's last maximum Q-value.
+* **SXp.py**: performs SXp's (and their summary) and computes:
+    * The SXp quality scores with the quality evaluation function f representing a weighted addition of the last-step reward of a scenario and it's last maximum Q-value. 
+    * The SXp representativeness scores.
 
-
-* **meansMetric.py**: computes average of SXp's scores. There are two different average we can extract from this file:
-    * Average of scores based on *n* runs of explanation scores starting from the *same* specific state
-    * Average scores based on *m* explanation scores starting from *m* different states. 
+* **meansMetric.py**: computes average of SXp's quality scores. There are two different average we can extract from this file:
+    * Average of quality scores based on *n* runs of explanation scores starting from the *same* specific state
+    * Average quality scores based on *m* explanation scores starting from *m* different states. 
       This average cannot be computed without producing the first dot average explained for the *m* different states.
 
 
@@ -71,11 +78,15 @@ name and ends with the state number (e.g. "4x4_0.csv", "8x8_22.csv")
 
 By default, running **train.py** starts a training of Agent and WindAgent of 10 000 episodes each, on the 4x4 map and **test.py**
 runs a classic testing loop on the 4x4 map for the policy explained in the paper. The user can ask for SXp's of length 5 
-and their associated scores , at each time-step. To test SXp's for a new policy, it's necessary to execute sequentially **train.py**, then 
-**test.py** with appropiate parameters. If the user wants to compute SXp's from a specific state with **test.py**, he must change parameters *-spec*, *-spec_obs* and *-csv*. 
-To compute average scores based on *n* scores in a same CSV file from a specific state, you need to run **meansMetric.py** and
-provides 3 parameters: CSV filename (*-csv*), states number (in that case,*-s=1*) and map's name (e.g. *-map "4x4"*). 
-**meansMetric.py** can also be used to compute an overall average based on *m* CSV files representing explanation scores of *m*
+and their associated scores , at each time-step.
+
+To test SXp's for a new policy, it's necessary to execute sequentially **train.py**, then 
+**test.py** with appropriate parameters. If the user wants to compute SXp's from a specific state with **test.py**, he must change parameters *-spec*, *-spec_obs* and *-csv*. 
+If the user increases the SXp's length, he must specify a compression ratio (*-summary* parameter) to manage SXp summary.
+To compute average quality scores based on *n* quality scores in a same CSV file from a specific state, the user needs to run **meansMetric.py** and
+provides 3 parameters: CSV filename (*-csv*), states number (in that case,*-s=1*) and map's name (e.g. *-map "4x4"*). Remarks of this paragraph hold for DC problem.
+
+**meansMetric.py** can also be used to compute an overall average based on *m* CSV files representing explanation quality scores of *m*
 different starting states. Accordingly, the value of parameter *-csv* is not important. By default, the average 
 is computed with these starting states use for the paper (hence, we firstly need to compute explanation score from all starting states):
 
@@ -88,8 +99,10 @@ Otherwise, you must change the states list parameter *-st_list*.
 
 In order to test SXp's from different specific states, the followings lists provide available states (i.e. states that are neither a hole nor a goal state):
 
-* 4x4 map : [0, 1, 2, 3, 4, 6, 8, 9, 10, 13, 14]
+* 4x4 map : [0-4, 6, 8-10, 13-14]
 * 8x8 map : [0-18, 20-28, 30-34, 36-40, 43-45, 47-48, 50-51, 53, 55-58, 60-62]
+* 10x10 'A' map: [0-1, 3-6, 8-11, 13, 16-17, 19-21, 23-35, 37-38, 40-41, 43, 45-47, 49-53, 55-63, 66, 68-69, 71-76, 78-80, 82-86, 88-92, 94, 96-98]
+* 10x10 'B' map: [0-6, 8-10, 12-14, 16-17, 19-22, 24-25, 27-32, 34-38, 40-43, 45-47, 49, 52-54, 56-57, 59-70, 72, 74-75, 78-79, 81-82, 84-85, 88-98]
 
 The number of training episodes must be greater than or equal to 10000, 50000 for the training in the 4x4 map and the other
 maps respectively. The followings bash commands are examples of use of **train.py**, **test.py** and **meansMetric.py** files.
@@ -97,45 +110,54 @@ maps respectively. The followings bash commands are examples of use of **train.p
 **Train:**
 ```bash
 #  Train Agent and WindAgents on 4x4 map with 10000 episodes and save Q-tables in JSON files with names starting with "4x4_test"
-python train.py
+python3 train.py
 #  Train Agent and WindAgents on 8x8 map with 50000 episodes and save Q-tables in JSON files with names starting with "8x8_test"
-python train.py -map "8x8" -policy "8x8_test" -ep 50000
+python3 train.py -map "8x8" -policy "8x8_test" -ep 50000
 ```
 **Test:**
 ```bash
-#####  Test in user mode a policy of a 4x4 map:  ##### 
+#####  Test in user mode a policy of a 4x4 map  ##### 
 
 #  Test a learnt policy on a 4x4 map over 1 episode. SXp's of length 5 can be computed at each time-step. SXp's scores are based on 10000 randomly-generated scenarios
-python test.py
+python3 test.py
 #  Test a learnt policy on a 4x4 map over 5 episodes. SXp's of length 3 can be computed at each time-step. SXp's scores are based on 10 randomly-generated scenarios 
-python test.py -k 3 -ep 5 -scenarios 10
+python3 test.py -k 3 -ep 5 -scenarios 10
+#  Test a learnt policy on a 4x4 map over 1 episode. SXp's of length 6 can be computed at each time-step. The displayed SXp are summarized with a compression ratio set of 2.
+python3 test.py -k 6 -summary 2
 
 #####  Test SXp's from a specific state and compute associated scores  ##### 
 
-#  Compute SXp's of length 5, starting from state 22 on 8x8 map. The used policies are "8x8" (three distinct policies for Agent and WindAgents) and scores calculated are saved in "8x8_22.csv" file
-python test.py -spec -spec_obs 22 -k 5 -policy "8x8" -map "8x8" -csv "8x8_22.csv"
-#  Compute SXp's of length 1, starting from state 10 on 4x4 map. The used policies are "4x4" and scores calculated are saved in "4x4_10.csv" file
-python test.py -spec -spec_obs 10 -k 1 -policy "4x4" -csv "4x4_10.csv"
-#  Compute SXp's of length 1, starting from state 13 on 4x4 map. The used policies are "4x4" and scores calculated are saved in "4x4_13.csv" file
-python test.py -spec -spec_obs 13 -k 1 -policy "4x4" -csv "4x4_13.csv"
+#  Compute SXp's of length 5, starting from state 22 on 8x8 map. The used policies are "8x8" (three distinct policies for Agent and WindAgents) and calculated quality scores are saved in "8x8_22.csv" file
+python3 test.py -spec -spec_obs 22 -k 5 -policy "8x8" -map "8x8" -csv "8x8_22.csv"
+#  Compute SXp's of length 1, starting from state 10 on 4x4 map. The used policies are "4x4" and calculated quality scores are saved in "4x4_10.csv" file
+python3 test.py -spec -spec_obs 10 -k 1 -policy "4x4" -csv "4x4_10.csv"
+#  Compute SXp's of length 1, starting from state 13 on 4x4 map. The used policies are "4x4" and calculated quality scores are saved in "4x4_13.csv" file
+python3 test.py -spec -spec_obs 13 -k 1 -policy "4x4" -csv "4x4_13.csv"
+#  Compute SXp's of length 20, starting from state 1 on 10x10 'A' map. The used policies are "10x10" and the displayed SXp are summarized with a compression ratio of 5.
+python3 test.py -spec -spec_obs 1 -k 20 -map "10x10" -policy "10x10" -summary 5
+
+####   Compute representativeness scores of SXp compute from *n* randomly chosen starting state   ####
+
+#  Compute 100 SXp of length 5 on the 8x8 map. The used policies are "8x8" and representativeness scores are stored in "rp_8x8map_100scenarios.csv" CSV file
+python3 test.py -scenarios 100 -policy "8x8" -map "8x8" -csv "rp_8x8map_100scenarios.csv" 
 ```
 **SXp's score average:**
 ```bash
 #####   Compute score average for SXp's starting from a specific state. The csv file may contains n scores due to n run of computing SXp's scores  ##### 
 
 #  Compute average from a csv file representing SXp's scores from the starting state 10 in 4x4 map
-python meansMetric.py -csv "4x4_10.csv"
+python3 meansMetric.py -csv "4x4_10.csv"
 #  Compute average from a csv file representing SXp's scores from the starting state 13 in 4x4 map
-python meansMetric.py -csv "4x4_13.csv"
+python3 meansMetric.py -csv "4x4_13.csv"
 
 #####  Compute score average for SXp's starting from s different states (followings two lines reproduce scores presented in the paper)  ##### 
 
 #  Compute average from 7 csv files representing SXp's scores from 7 different starting states in 4x4 map
-python meansMetric.py -s 7 -p 'Metrics\7 reachable states - 4x4\Last step reward'
+python3 meansMetric.py -s 7 -p 'Metrics/7 reachable states - 4x4/Last step reward'
 #  Compute average from 20 csv files representing SXp's scores from 20 different starting states in 8x8 map
-python meansMetric.py -s 20 -p 'Metrics\20 random states - 8x8\Last step reward' -map "8x8"
+python3 meansMetric.py -s 20 -p 'Metrics/20 random states - 8x8/Last step reward' -map "8x8"
 #  Compute average from 2 csv files representing SXp's scores from 2 different starting states in 4x4 map
-python meansMetric.py -s 2 -st_list "[10, 13]" 
+python3 meansMetric.py -s 2 -st_list "[10, 13]" 
 ```
 # Drone Coverage (DC) #
 
@@ -146,12 +168,12 @@ The Drone Coverage folder is organised as follows:
 * **train.py**: parameterized python file which calls training function for Agent and WindAgent instances, save info into text files and neural networks into *dat* files.
 
 
-* **test.py**: parameterized python file which loads learnt neural networks and tests them in both ways :
+* **test.py**: parameterized python file which loads learnt neural networks and tests them in three ways :
     * A classic sequence loop which starts in the initial configuration of the chosen map. The learnt agent's policy is used. 
       At each time-step, the user can ask for SXp's. Explanation scores can be computed when all SXp's are displayed.
-    * A specific computation of the three SXp's from a particular state. In this case, explanation scores are 
+    * A specific computation of SXp from a particular state. In this case, explanation scores are 
       necessarily computed.
-
+    * A computation of *n* SXp from different starting state to measure representativeness scores. To do so, the user must provide as a parameter a CSV filename starting with *'rp'*.
 
 * **agent.py**: regroups two classes: *Agent* for classic RL agents and *WindAgent* which is used to represent hostile/favourable
 environment-agents.
@@ -166,8 +188,9 @@ It contains a *DQN* class which is the neural network used to approximate *Q*, a
 experiences and functions to calculate the DQN's loss.
 
 
-* **SXp.py**: performs SXp's and compute their scores with the quality evaluation function f representing the last-step reward of a scenario
-
+* **SXp.py**: performs SXp's (and their summary) and computes:
+   * The SXp quality scores with the quality evaluation function f representing the last-step cumulative reward of a scenario
+   * The SXp representativeness scores
 
 * **meansMetric.py**: computes average of SXp's scores. There are two different average we can extract from this file:
     * Average of scores based on *n* runs of explanation scores starting from the *same* specific configuration
@@ -202,45 +225,52 @@ The followings bash commands are examples of use of **train.py**, **test.py** an
 ```bash
 #  Train Agents and WindAgents on 10x10 map with a timestep limit of 40000. It saves info into "Test_Logs" folder and 
 #  neural networks into "Test_Models" folder
-python train.py -model "Test_Models" -log "Test_Logs" -limit 40000
+python3 train.py -model "Test_Models" -log "Test_Logs" -limit 40000
 #  Train Agents on 10x10 map with a timestep limit of 30000. It saves info into "Test_Logs" folder and 
 #  neural networks into "Test_Models" folder. The transition function is deterministic since there is no wind (hence we 
 #  cannot compute SXp's for this policy). The batch size is set to 16 
-python train.py -model "Test_Models" -log "Test_Logs" -limit 30000 -no_w -batch 16
+python3 train.py -model "Test_Models" -log "Test_Logs" -limit 30000 -no_w -batch 16
 ```
 **Test:**
 ```bash
 #####  Test in user mode a policy  #####
 
 #  Test a learnt policy (by default, the one presented in the paper) on a 10x10 map with 4 agents. Agents start at random positions. SXp's of length 6 can be computed at each time-step. SXp's scores are based on 1000 randomly-generated scenarios.
-python test.py
+python3 test.py
 #  Test a learnt policy (by default, the one presented in the paper) on a 10x10 map with 4 agents. Agents start at pre-defined positions (S cells). SXp's of length 4 can be computed at each time-step. SXp's scores are based on 100 randomly-generated scenarios.
-python test.py -k 4 -no_rand -scenarios 100
+python3 test.py -k 4 -no_rand -scenarios 100
 
-#####  Test SXp's from a specific configuration and compute associated scores  ##### 
+#####  Test SXp from a specific configuration and compute associated scores  ##### 
 
-#  Compute SXp's of length 3, starting from configuration [[1,5], [6,6], [7,7], [8,8]]. The default policies are used and scores are saved in '1-11.69.csv' file.
-python test.py -csv '1-11.69.csv' -k 3 -spec -spec_conf "[[1,5], [6,6], [7,7], [8,8]]"
+#  Compute SXp of length 3, starting from configuration [[1,5], [6,6], [7,7], [8,8]]. The default policies are used and scores are saved in '1-11.69.csv' file.
+python3 test.py -csv '1-11.69.csv' -k 3 -spec -spec_conf "[[1,5], [6,6], [7,7], [8,8]]"
 #  Idem with a different csv filename and configuration
-python test.py -csv '2-11.69.csv' -k 3 -spec -spec_conf "[[1,9], [6,6], [7,3], [8,2]]" 
-#  Compute SXp's of length 5, starting from configuration [[4,1], [6,7], [9,3], [2,4]]. Different policies are used.
-python test.py -csv '1-11.58.csv' -k 5 -spec -spec_conf "[[4,1], [6,7], [9,3], [2,4]]" -model 'Models\Agent\tl1950000e750000s50000th22ddqnTrue-best_11.58.dat' -model_h 'Models\Hostile\tl1950000e750000s50000th22ddqnTrue_H-best_-5.29.dat' -model_f 'Models\Favourable\tl1950000e750000s50000th22ddqnTrue_F-best_11.93.dat'
+python3 test.py -csv '2-11.69.csv' -k 3 -spec -spec_conf "[[1,9], [6,6], [7,3], [8,2]]" 
+#  Compute SXp of length 5, starting from configuration [[4,1], [6,7], [9,3], [2,4]]. Different policies are used.
+python3 test.py -csv '1-11.58.csv' -k 5 -spec -spec_conf "[[4,1], [6,7], [9,3], [2,4]]" -model 'Models/Agent/tl1950000e750000s50000th22ddqnTrue-best_11.58.dat' -model_h 'Models/Hostile/tl1950000e750000s50000th22ddqnTrue_H-best_-5.29.dat' -model_f 'Models/Favourable/tl1950000e750000s50000th22ddqnTrue_F-best_11.93.dat'
+#  Compute SXp of length 50. The displayed SXp are summarized with a compression ratio of 5.
+python3 test.py -k 50 -summary 5
+
+####   Compute representativeness scores of SXp compute from *n* randomly chosen starting configuration   ####
+
+#  Compute 100 SXp of length 30. Representativeness scores are stored in "rp_30_k_100_scenarios.csv" CSV file
+python3 test.py -k 30 -scenarios 30 -csv 'rp_30_k_100_scenarios.csv'
 ```
 **SXp's score average:**
 ```bash
 #####  Compute score average for SXp's starting from a specific configuration. The csv file may contains n scores due to n run of computing SXp's scores  ##### 
 
 #  Compute average from the default csv file "1-11.69.csv" representing SXp's scores from the first configuration used in Test section
-python meansMetric.py
+python3 meansMetric.py
 #  Compute average from the csv file "2-11.69.csv" representing SXp's scores from the second configuration used in Test section
-python meansMetric.py -csv '2-11.69.csv'
+python3 meansMetric.py -csv '2-11.69.csv'
 
 #####  Compute score average for SXp's starting from s different states (following line reproduce scores presented in the paper)  ##### 
 
 #  Compute average from 30 csv files representing SXp's scores from 30 different starting configurations
-python meansMetric.py -conf 30 -p 'Metrics\30 random configs - policy explained 11.69'
+python3 meansMetric.py -conf 30 -p 'Metrics/30 random configs - policy explained 11.69'
 #  Compute average from 2 csv files representing SXp's scores from 2 different starting configurations
-python meansMetric.py -conf 2
+python3 meansMetric.py -conf 2
 ```
 ## Remarks ##
 

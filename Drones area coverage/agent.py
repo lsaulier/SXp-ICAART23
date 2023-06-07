@@ -61,8 +61,7 @@ class Agent:
 
         return neighbourhood
 
-
-    #  Center index on agent's position. Function used for extracting space part of an agent's state.
+    #  Center index on agent's position. Function used for extracting sub part of an agent's state.
     #  Input: index's limit of view range (int)
     #  Output: index list (int list)
     def convert_index(self, limit):
@@ -97,6 +96,25 @@ class Agent:
 
         return action
 
+    #  Compute the state importance of a specific observation
+    #  Input: policy (DQN), state (int) and device (str)
+    #  Output: score (float)
+    def stateImportance(self, net, observation, device):
+        #  Convert into tensor
+        view = normalize(observation[0], 3, "view")
+        feat = normalize(observation[1], 9, "feats")
+        view = np.array(view, copy=False)
+        feat = np.array(feat, copy=False)
+        tens_view = torch.tensor(view, dtype=torch.float32, device=device)
+        tens_feat = torch.tensor(feat, dtype=torch.float32, device=device)
+        #  Merge view and position of the agent into one tensor
+        state = (tens_view.unsqueeze(0).unsqueeze(0), tens_feat)
+        #  Get best action according to DQN
+        q_vals_v = net(state)
+        max_q_vals, _ = torch.max(q_vals_v, dim=1)
+        min_q_vals, _ = torch.min(q_vals_v, dim=1)
+        return max_q_vals.item() - min_q_vals.item()
+
     #  Get a 2D arrays representing the neighbourhood of the agent and its position
     #  Input: None
     #  Output: an observation (int list list)
@@ -108,6 +126,19 @@ class Agent:
     #  Output: None
     def set_obs(self, obs):
         self.observation = obs
+        return
+
+    #  Get done info of the agent
+    #  Input: None
+    #  Output: done info (boolean)
+    def get_dead(self):
+        return self.dead
+
+    #  Set done info of the agent
+    #  Input: done info (boolean)
+    #  Output: None
+    def set_dead(self, dead):
+        self.dead = dead
         return
 
 class WindAgent:
@@ -157,8 +188,7 @@ class WindAgent:
 
         return neighbourhood
 
-
-    #  Center index on agent's position. Function used for extracting space part of an agent's state.
+    #  Center index on agent's position. Function used for extracting sub part of an agent's state.
     #  Input: index's limit of view range (int)
     #  Output: index list (int list)
     def convert_index(self, limit):

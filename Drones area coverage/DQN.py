@@ -1,7 +1,6 @@
 # DQN class inspired by : https://github.com/PacktPublishing/Deep-Reinforcement-Learning-Hands-On-Second-Edition/blob/master/Chapter25/lib/model.py
 # ExperienceBuffer class inspired by : https://github.com/PacktPublishing/Deep-Reinforcement-Learning-Hands-On-Second-Edition/blob/master/Chapter06/02_dqn_pong.py
 
-import typing
 import torch
 import torch.nn as nn
 import numpy as np
@@ -31,7 +30,7 @@ class DQN(nn.Module):
         )
 
     #  Pass through the CNN
-    #  Input: shape of view datas (int Tuple)
+    #  Input: shape of view datas (int tuple)
     #  Output: output layer (np array)
     def _get_conv_out(self, shape):
         o = self.view_conv(torch.zeros(1, *shape))
@@ -96,7 +95,7 @@ class ExperienceBuffer:
 #  Calculate the loss
 #  Input : batch (Experience list), NN (DQN), target NN (DQN), device (string), use of Double-Q-learning (boolean)
 #  Output : MSE loss
-def calc_loss(batch, net, tgt_net, gamma, device="cpu", double=False, batch_weights=None):
+def calc_loss(batch, net, tgt_net, gamma, device="cpu", double=False):
     states, actions, rewards, dones, next_states = batch
     #  Convert into Tensors
     states_v = preprocess(states, device)

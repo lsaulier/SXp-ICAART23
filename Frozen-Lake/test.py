@@ -1,5 +1,6 @@
+import csv
 import os
-import sys
+import random as r
 import numpy as np
 import argparse
 from env import MyFrozenLake
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     parser.add_argument('-no_spec', '--no_specific', action="store_false", dest="spec", help="Do not start from a specific state", required=False)
     parser.set_defaults(spec=False)
     parser.add_argument('-k', '--length_k', default=5, help="Length of SXps", type=int, required=False)
+    parser.add_argument('-summary', '--summary', default=0, help="Ratio for summarized SXps", type=int, required=False)
     parser.add_argument('-spec_obs', '--specific_strating_observation', default=4, help="Specific state", type=int, required=False)
     parser.add_argument('-csv', '--csv_filename', default="scores.csv", help="csv file to store scores in case of starting from a specific state", type=str, required=False)
     parser.add_argument('-r', '--render', action="store_true", dest="render", help="Environment rendering at each step", required=False)
@@ -29,6 +31,9 @@ if __name__ == "__main__":
     parser.add_argument('-mm_value', '--maxmin_value', dest="maxmin_value", action="store_true", help="Compute FE/HE-scores with max/min value instead of last-step value", required=False)
     parser.add_argument('-no_mm_value', '--no_maxmin_value', action="store_false", dest="maxmin_value", help="Compute FE/HE-scores with max/min value instead of last-step value", required=False)
     parser.set_defaults(maxmin_value=False)
+    parser.add_argument('-lbda', '--lbda', default=1.0,
+                        help="Impact of gap score during the computation of a summarized SXp", type=float,
+                        required=False)
     args = parser.parse_args()
 
     # Get arguments
@@ -43,6 +48,9 @@ if __name__ == "__main__":
     SPECIFIC_STATE_OBS = args.specific_strating_observation
     CSV_FILENAME = args.csv_filename
     RENDER = args.render
+
+    SUMMARY = args.summary
+    LAMBDA = args.lbda
 
 
     # Paths to store Q tables
@@ -81,8 +89,30 @@ if __name__ == "__main__":
     if SPECIFIC_STATE:
         env.setObs(SPECIFIC_STATE_OBS)
         env.render()
-        # Compute SXp
-        SXpMetric(env, SPECIFIC_STATE_OBS, agent, K, wind_agents, number_scenarios=NUMBER_SCENARIOS, csv_filename=CSV_FILENAME, render=RENDER, mm_value=MM_VALUE)
+        if not SUMMARY:
+            # Compute SXp
+            SXpMetric(env, SPECIFIC_STATE_OBS, agent, K, wind_agents, number_scenarios=NUMBER_SCENARIOS, csv_filename=CSV_FILENAME, render=RENDER, mm_value=MM_VALUE)
+        else:
+            # Compute SXp
+            SXp(env, SPECIFIC_STATE_OBS, agent, K, wind_agents, number_scenarios=NUMBER_SCENARIOS, summary=SUMMARY, lbda=LAMBDA)
+
+    # Compute SXp from n randomly chosen observation and store representativeness scores
+    # Compare representativeness scores between FE/HE-scenarios
+    elif CSV_FILENAME.split(os.sep)[-1][:2] == "rp":
+        #  Write first line ----------------
+        with open(CSV_FILENAME, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow(['Observation (k='+str(K)+')', 'P score', 'FE score', 'HE score'])
+        #  Compute SXps -------------------
+        for _ in range(NUMBER_SCENARIOS):
+            # Select obs
+            rand_row, rand_col = r.randint(0, env.nRow - 1), r.randint(0, env.nCol - 1)
+            while env.desc[rand_row, rand_col] in b'GH':
+                rand_row, rand_col = r.randint(0, env.nRow - 1), r.randint(0, env.nCol - 1)
+            rand_obs = env.to_s(rand_row, rand_col)
+            env.setObs(rand_obs)
+            # SXp metric
+            SXpMetric(env, rand_obs, agent, K, wind_agents, csv_filename=CSV_FILENAME, render=RENDER, mm_value=MM_VALUE)
 
     # Start at initial state and compute SXp in each state, depending on user's choice
     else:
@@ -102,7 +132,7 @@ if __name__ == "__main__":
                 steps += 1
                 env.render()
                 # Compute SXp
-                SXp(env, obs, agent, K, wind_agents, number_scenarios=NUMBER_SCENARIOS)
+                SXp(env, obs, agent, K, wind_agents, number_scenarios=NUMBER_SCENARIOS, summary=SUMMARY, lbda=LAMBDA)
                 action, _ = agent.predict(obs)
                 obs, reward, done, info = env.step(action)
                 score += reward
